@@ -9,6 +9,30 @@
     path: /etc/nginx/sites-enabled/default
     state: absent
 
+- name: Create nginx metrics configuration
+  copy:
+    content: |
+      server {
+          listen 127.0.0.1:8079;
+          server_name localhost;
+          location /nginx_status {
+              stub_status on;
+              access_log off;
+              allow 127.0.0.1;
+              deny all;
+          }
+      }
+    dest: /etc/nginx/sites-available/metrics
+  notify: restart nginx
+
+- name: Enable nginx metrics site
+  file:
+    src: /etc/nginx/sites-available/metrics
+    dest: /etc/nginx/sites-enabled/metrics
+    state: link
+  notify: restart nginx
+  when: not ansible_check_mode
+
 - name: Create nginx app configurations
   template:
     src: app.conf.j2

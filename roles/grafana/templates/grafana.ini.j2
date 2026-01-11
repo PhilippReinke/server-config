@@ -1,0 +1,32 @@
+[paths]
+data = /var/lib/grafana
+logs = /var/log/grafana
+plugins = /var/lib/grafana/plugins
+provisioning = /etc/grafana/provisioning
+
+[server]
+protocol = http
+http_addr = {{ grafana_http_addr | default('127.0.0.1') }}
+http_port = {{ grafana_http_port | default(3000) }}
+domain = {{ grafana_domain | default('localhost') }}
+root_url = {{ grafana_root_url | default('%(protocol)s://%(domain)s:%(http_port)s/') }}
+
+[database]
+type = sqlite3
+path = grafana.db
+
+[session]
+provider = file
+
+[analytics]
+reporting_enabled = false
+check_for_updates = false
+
+[log]
+mode = file
+level = info
+
+[security]
+admin_user = {{ grafana_admin_user | default('admin') }}
+admin_password = {{ grafana_admin_password | default('admin') }}
+secret_key = {{ grafana_secret_key | default('changeme') }}

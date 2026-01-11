@@ -7,4 +7,7 @@
   roles:
     - certbot
     - nginx
+    - influxdb
+    - telegraf
+    - grafana
     - apps

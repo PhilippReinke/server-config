@@ -1,0 +1,10 @@
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB
+    type: influxdb
+    access: proxy
+    url: http://127.0.0.1:8086
+    database: {{ telegraf_database | default('metrics') }}
+    isDefault: true
+    editable: true
