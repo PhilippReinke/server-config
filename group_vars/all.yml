@@ -1,0 +1,25 @@
+apps:
+  home:
+    name: home-app
+    port: 8080
+    domain: philippreinke.de
+    binary: home-app
+    args: "-port {{ apps.home.port }} -dir /opt/{{ apps.home.name }}/data"
+  canvas:
+    name: canvas-app
+    port: 8081
+    domain: canvas.philippreinke.de
+    binary: canvas-app
+    args: "-port {{ apps.canvas.port }} -dir /opt/{{ apps.canvas.name }}/data"
+    websocket: true
+  kino:
+    name: kino-app
+    port: 8082
+    domain: kino.philippreinke.de
+    binary: kino-app
+    args: "-port {{ apps.kino.port }} -templates /opt/{{ apps.kino.name }}/data/templates -static /opt/{{ apps.kino.name }}/data/static -sync-interval 24h"
+
+app_user: www-data
+app_group: www-data
+deploy_path: /opt
+certbot_email: contact@philippreinke.de

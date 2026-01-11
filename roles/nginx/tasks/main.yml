@@ -1,0 +1,42 @@
+---
+- name: Install nginx
+  package:
+    name: nginx
+    state: present
+
+- name: Remove default nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Create nginx app configurations
+  template:
+    src: app.conf.j2
+    dest: "/etc/nginx/sites-available/{{ item.value.domain }}"
+  loop: "{{ apps | dict2items }}"
+  loop_control:
+    label: "{{ item.value.domain }}"
+  notify: restart nginx
+
+- name: Enable nginx sites
+  file:
+    src: "/etc/nginx/sites-available/{{ item.value.domain }}"
+    dest: "/etc/nginx/sites-enabled/{{ item.value.domain }}"
+    state: link
+  loop: "{{ apps | dict2items }}"
+  loop_control:
+    label: "{{ item.value.domain }}"
+  notify: restart nginx
+  when: not ansible_check_mode
+
+- name: Test nginx configuration
+  command: nginx -t
+  register: nginx_test
+  changed_when: false
+  failed_when: nginx_test.rc != 0
+
+- name: Start and enable nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: true

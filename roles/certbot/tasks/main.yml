@@ -1,0 +1,98 @@
+---
+- name: Install certbot and python3-certbot-nginx
+  package:
+    name:
+      - certbot
+      - python3-certbot-nginx
+    state: present
+
+- name: Create webroot directory for ACME challenges
+  file:
+    path: /var/www/certbot
+    state: directory
+    mode: "0755"
+
+- name: Get list of domains that need certificates
+  set_fact:
+    domains_to_cert: "{{ apps | dict2items | map(attribute='value.domain') | list }}"
+
+- name: Check if certificates exist for each domain
+  stat:
+    path: "/etc/letsencrypt/live/{{ item }}/fullchain.pem"
+  register: cert_status
+  loop: "{{ domains_to_cert }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: Obtain SSL certificates using standalone mode
+  command: >
+    certbot certonly
+    --standalone
+    --non-interactive
+    --agree-tos
+    --email {{ certbot_email }}
+    -d {{ item.item }}
+  register: certbot_result
+  changed_when: "'Successfully received certificate' in certbot_result.stdout"
+  failed_when: >
+    certbot_result.rc != 0 and
+    'already exists' not in certbot_result.stdout and
+    'Certificate not yet due for renewal' not in certbot_result.stdout and
+    'Certificate is still valid' not in certbot_result.stdout
+  loop: "{{ cert_status.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: not item.stat.exists
+  # Note: Standalone mode starts a temporary web server on port 80
+  # This runs before nginx, so port 80 should be free
+
+- name: Get all certificates (including newly obtained)
+  stat:
+    path: "/etc/letsencrypt/live/{{ item }}/fullchain.pem"
+  register: all_cert_status
+  loop: "{{ domains_to_cert }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: Configure renewals to use webroot instead of standalone
+  replace:
+    path: "/etc/letsencrypt/renewal/{{ item.item }}.conf"
+    regexp: "^authenticator = standalone$"
+    replace: "authenticator = webroot"
+  loop: "{{ all_cert_status.results }}"
+  when: item.stat.exists
+  register: renewal_config_result
+  failed_when: false
+
+- name: Add webroot_path to renewal config if missing
+  lineinfile:
+    path: "/etc/letsencrypt/renewal/{{ item.item }}.conf"
+    regexp: "^webroot_path ="
+    line: "webroot_path = /var/www/certbot,"
+    insertafter: "^authenticator ="
+    state: present
+  loop: "{{ all_cert_status.results }}"
+  when: item.stat.exists
+  register: webroot_config_result
+  failed_when: false
+
+- name: Verify renewal configuration files exist
+  stat:
+    path: "/etc/letsencrypt/renewal/{{ item.item }}.conf"
+  register: renewal_verify
+  loop: "{{ all_cert_status.results }}"
+  when: item.stat.exists
+
+- name: Assert renewal files exist for all certificates
+  assert:
+    that:
+      - renewal_verify.results | default([]) | selectattr('stat.exists', 'equalto', true) | list | length == (all_cert_status.results | selectattr('stat.exists', 'equalto', true) | list | length)
+    fail_msg: "Renewal configuration file missing for one or more domains"
+    success_msg: "All renewal configuration files verified"
+  when: all_cert_status.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
+
+- name: Setup certbot renewal timer
+  systemd:
+    name: certbot.timer
+    enabled: true
+    state: started

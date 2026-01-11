@@ -1,0 +1,60 @@
+---
+- name: Create app directories
+  file:
+    path: "{{ deploy_path }}/{{ item.value.name }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+  loop: "{{ apps | dict2items }}"
+  loop_control:
+    label: "{{ item.value.name }}"
+
+- name: Create app data directories
+  file:
+    path: "{{ deploy_path }}/{{ item.value.name }}/data"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+  loop: "{{ apps | dict2items }}"
+  loop_control:
+    label: "{{ item.value.name }}"
+
+- name: Upload app binaries
+  copy:
+    src: "{{ playbook_dir }}/../apps/{{ item.value.name }}/{{ item.value.binary }}"
+    dest: "{{ deploy_path }}/{{ item.value.name }}/{{ item.value.binary }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  loop: "{{ apps | dict2items }}"
+  loop_control:
+    label: "{{ item.value.binary }}"
+
+- name: Upload app data files
+  copy:
+    src: "{{ playbook_dir }}/../apps/{{ item.value.name }}/data/"
+    dest: "{{ deploy_path }}/{{ item.value.name }}/data/"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+  loop: "{{ apps | dict2items }}"
+  loop_control:
+    label: "{{ item.value.name }} data"
+
+- name: Create systemd service files
+  template:
+    src: app.service.j2
+    dest: "/etc/systemd/system/{{ item.value.name }}.service"
+  loop: "{{ apps | dict2items }}"
+  loop_control:
+    label: "{{ item.value.name }}"
+  notify: reload systemd
+
+- name: Enable and start app services
+  systemd:
+    name: "{{ item.value.name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop: "{{ apps | dict2items }}"
+  loop_control:
+    label: "{{ item.value.name }}"

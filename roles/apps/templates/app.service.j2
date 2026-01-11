@@ -1,0 +1,18 @@
+[Unit]
+Description={{ item.value.name }} service
+After=network.target
+
+[Service]
+Type=simple
+User={{ app_user }}
+Group={{ app_group }}
+WorkingDirectory={{ deploy_path }}/{{ item.value.name }}
+ExecStart={{ deploy_path }}/{{ item.value.name }}/{{ item.value.binary }} {{ item.value.args }}
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+MemoryLimit=512M
+
+[Install]
+WantedBy=multi-user.target

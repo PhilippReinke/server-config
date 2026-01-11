@@ -1,0 +1,10 @@
+---
+- name: Setup IONOS server
+  hosts: ionos
+  become: true
+  vars_files:
+    - ../group_vars/all.yml
+  roles:
+    - certbot
+    - nginx
+    - apps
