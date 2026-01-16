@@ -25,10 +25,11 @@
     dest: "{{ deploy_path }}/{{ item.value.name }}/{{ item.value.binary }}"
     owner: "{{ app_user }}"
     group: "{{ app_group }}"
-    mode: '0755'
+    mode: "0755"
   loop: "{{ apps | dict2items }}"
   loop_control:
     label: "{{ item.value.binary }}"
+  notify: restart app service
 
 - name: Upload app data files
   copy:

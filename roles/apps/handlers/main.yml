@@ -2,3 +2,8 @@
 - name: reload systemd
   systemd:
     daemon_reload: true
+
+- name: restart app service
+  systemd:
+    name: "{{ item.value.name }}"
+    state: restarted
